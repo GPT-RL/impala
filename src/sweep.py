@@ -10,12 +10,12 @@ class Args(run.Args):
 
 
 def main(args: Args):
-    redis = Redis()
+    redis = Redis(host="redis")
     logger = util.AbslLogger()
     done = False
     while not done:
-        id_or_done = redis.lpop("env-queue")
-        if id_or_done is None:
+        id_or_done = redis.lpop("env-queue").decode("utf-8")
+        if id_or_done == "DONE":
             logger.write(f"Process {args.rank} is done.")
             return
         assert id_or_done in SWEEP

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-device=$(redis-cli RPOP device-queue)
+device=$(redis-cli -h redis RPOP device-queue)
 while [ "$device" == "(nil)" ]
 do
   sleep 1
