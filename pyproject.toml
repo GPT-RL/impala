@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "impala-gpt"
+version = "0.1.0"
+description = ""
+authors = ["Ethan Brooks <ethanabrooks@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = ">3.9"
+#bsuite = "^0.3.5"
+#dm-haiku = "^0.0.4"
+#dm-env = "^1.4"
+#jax = "^0.2.13"
+#optax = "^0.0.6"
+#rlax = "^0.0.3"
+#tqdm = "^4.61.0"
+#jaxlib = {url = "https://storage.googleapis.com/jax-releases/cuda112/jaxlib-0.1.65+cuda112-cp39-none-manylinux2010_x86_64.whl", markers = "sys_platform == linux"}
+halo = "^0.0.31"
+requests = "^2.25.1"
+transformers = "^4.6.1"
+#tensorflow = "^2.5.0"
+
+[tool.poetry.dev-dependencies]
+ipython = "^7.24.1"
+ipdb = "^0.13.9"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
