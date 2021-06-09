@@ -17,15 +17,22 @@
 import threading
 from typing import List
 
+import jax
+import optax
 from absl import app
-from bsuite.environments import catch
+from absl import flags
+from bsuite import bsuite
 from examples.impala import actor as actor_lib
 from examples.impala import agent as agent_lib
 from examples.impala import haiku_nets
 from examples.impala import learner as learner_lib
 from examples.impala import util
-import jax
-import optax
+
+# Bsuite flags
+flags.DEFINE_string("bsuite_id", "deep_sea/0", "Bsuite id.")
+flags.DEFINE_string("results_dir", "/tmp/bsuite", "CSV results directory.")
+flags.DEFINE_boolean("overwrite", False, "Whether to overwrite csv results.")
+FLAGS = flags.FLAGS
 
 ACTION_REPEAT = 1
 BATCH_SIZE = 2
@@ -38,65 +45,72 @@ FRAMES_PER_ITER = ACTION_REPEAT * BATCH_SIZE * UNROLL_LENGTH
 
 
 def run_actor(actor: actor_lib.Actor, stop_signal: List[bool]):
-  """Runs an actor to produce num_trajectories trajectories."""
-  while not stop_signal[0]:
-    frame_count, params = actor.pull_params()
-    actor.unroll_and_push(frame_count, params)
+    """Runs an actor to produce num_trajectories trajectories."""
+    while not stop_signal[0]:
+        frame_count, params = actor.pull_params()
+        actor.unroll_and_push(frame_count, params)
 
 
 def main(_):
-  # A thunk that builds a new environment.
-  # Substitute your environment here!
-  build_env = catch.Catch
 
-  # Construct the agent. We need a sample environment for its spec.
-  env_for_spec = build_env()
-  num_actions = env_for_spec.action_spec().num_values
-  agent = agent_lib.Agent(num_actions, env_for_spec.observation_spec(),
-                          haiku_nets.CatchNet)
+    # Create an environment and grab the spec.
+    def build_env():
+        return bsuite.load_and_record_to_csv(
+            bsuite_id=FLAGS.bsuite_id,
+            results_dir=FLAGS.results_dir,
+            overwrite=FLAGS.overwrite,
+        )
 
-  # Construct the optimizer.
-  max_updates = MAX_ENV_FRAMES / FRAMES_PER_ITER
-  opt = optax.rmsprop(1e-1, decay=0.99, eps=0.1)
+    env_for_spec = build_env()
 
-  # Construct the learner.
-  learner = learner_lib.Learner(
-      agent,
-      jax.random.PRNGKey(428),
-      opt,
-      BATCH_SIZE,
-      DISCOUNT_FACTOR,
-      FRAMES_PER_ITER,
-      max_abs_reward=1.,
-      logger=util.AbslLogger(),  # Provide your own logger here.
-  )
+    # Construct the agent. We need a sample environment for its spec.
+    num_actions = env_for_spec.action_spec().num_values
+    agent = agent_lib.Agent(
+        num_actions, env_for_spec.observation_spec(), haiku_nets.CatchNet
+    )
 
-  # Construct the actors on different threads.
-  # stop_signal in a list so the reference is shared.
-  actor_threads = []
-  stop_signal = [False]
-  for i in range(NUM_ACTORS):
-    actor = actor_lib.Actor(
+    # Construct the optimizer.
+    max_updates = MAX_ENV_FRAMES / FRAMES_PER_ITER
+    opt = optax.rmsprop(1e-1, decay=0.99, eps=0.1)
+
+    # Construct the learner.
+    learner = learner_lib.Learner(
         agent,
-        build_env(),
-        UNROLL_LENGTH,
-        learner,
-        rng_seed=i,
+        jax.random.PRNGKey(428),
+        opt,
+        BATCH_SIZE,
+        DISCOUNT_FACTOR,
+        FRAMES_PER_ITER,
+        max_abs_reward=1.0,
         logger=util.AbslLogger(),  # Provide your own logger here.
     )
-    args = (actor, stop_signal)
-    actor_threads.append(threading.Thread(target=run_actor, args=args))
 
-  # Start the actors and learner.
-  for t in actor_threads:
-    t.start()
-  learner.run(int(max_updates))
+    # Construct the actors on different threads.
+    # stop_signal in a list so the reference is shared.
+    actor_threads = []
+    stop_signal = [False]
+    for i in range(NUM_ACTORS):
+        actor = actor_lib.Actor(
+            agent,
+            build_env(),
+            UNROLL_LENGTH,
+            learner,
+            rng_seed=i,
+            logger=util.AbslLogger(),  # Provide your own logger here.
+        )
+        args = (actor, stop_signal)
+        actor_threads.append(threading.Thread(target=run_actor, args=args))
 
-  # Stop.
-  stop_signal[0] = True
-  for t in actor_threads:
-    t.join()
+    # Start the actors and learner.
+    for t in actor_threads:
+        t.start()
+    learner.run(int(max_updates))
+
+    # Stop.
+    stop_signal[0] = True
+    for t in actor_threads:
+        t.join()
 
 
-if __name__ == '__main__':
-  app.run(main)
+if __name__ == "__main__":
+    app.run(main)
