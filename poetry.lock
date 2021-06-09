@@ -386,6 +386,7 @@ scipy = "*"
 [package.source]
 type = "url"
 url = "https://storage.googleapis.com/jax-releases/cuda112/jaxlib-0.1.65+cuda112-cp38-none-manylinux2010_x86_64.whl"
+
 [[package]]
 name = "jedi"
 version = "0.18.0"
@@ -720,6 +721,17 @@ python-versions = ">=3.5"
 numpy = ">=1.13.3"
 
 [[package]]
+name = "redis"
+version = "3.5.3"
+description = "Python client for Redis key-value store"
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+
+[package.extras]
+hiredis = ["hiredis (>=0.1.3)"]
+
+[[package]]
 name = "regex"
 version = "2021.4.4"
 description = "Alternative regular expression module, to replace re."
@@ -760,6 +772,18 @@ dm-env = ">=1.2"
 jax = ">=0.1.55"
 jaxlib = ">=0.1.37"
 numpy = ">=1.18.0"
+
+[[package]]
+name = "rq"
+version = "1.8.1"
+description = "RQ is a simple, lightweight, library for creating background jobs, and processing them."
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[package.dependencies]
+click = ">=5.0.0"
+redis = ">=3.5.0"
 
 [[package]]
 name = "sacremoses"
@@ -1035,7 +1059,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.8"
-content-hash = "127d974630203d7c627422d6bf876b2e0b2519f85982484989db3fefeef787ab"
+content-hash = "fce5ebdc2592cf30b0e52369928b8787093ccdaa2a2527897291f7f84b8c9eee"
 
 [metadata.files]
 absl-py = [
@@ -1421,6 +1445,10 @@ pywavelets = [
     {file = "PyWavelets-1.1.1-cp39-cp39-win_amd64.whl", hash = "sha256:732bab78435c48be5d6bc75486ef629d7c8f112e07b313bf1f1a2220ab437277"},
     {file = "PyWavelets-1.1.1.tar.gz", hash = "sha256:1a64b40f6acb4ffbaccce0545d7fc641744f95351f62e4c6aaa40549326008c9"},
 ]
+redis = [
+    {file = "redis-3.5.3-py2.py3-none-any.whl", hash = "sha256:432b788c4530cfe16d8d943a09d40ca6c16149727e4afe8c2c9d5580c59d9f24"},
+    {file = "redis-3.5.3.tar.gz", hash = "sha256:0e7e0cfca8660dea8b7d5cd8c4f6c5e29e11f31158c0b0ae91a397f00e5a05a2"},
+]
 regex = [
     {file = "regex-2021.4.4-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:619d71c59a78b84d7f18891fe914446d07edd48dc8328c8e149cbe0929b4e000"},
     {file = "regex-2021.4.4-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:47bf5bf60cf04d72bf6055ae5927a0bd9016096bf3d742fa50d9bf9f45aa0711"},
@@ -1471,6 +1499,10 @@ requests = [
 rlax = [
     {file = "rlax-0.0.3-py3-none-any.whl", hash = "sha256:566e4017c49493e1514fe02d2559ef344d134efff0ce72ac7db5c28c14261425"},
     {file = "rlax-0.0.3.tar.gz", hash = "sha256:37b30cc2fd58acb322e599ed4dc8149dd0c8d703cb99413caca8a624c1c3579f"},
+]
+rq = [
+    {file = "rq-1.8.1-py2.py3-none-any.whl", hash = "sha256:2c7f795a2c85d84125314e49853ed66ca9acf062e997ada16e259c1c284f525f"},
+    {file = "rq-1.8.1.tar.gz", hash = "sha256:feec0f914e69cae2380e2f46d82901e2abbd6fb09db320acb295f486a338f89f"},
 ]
 sacremoses = [
     {file = "sacremoses-0.0.45-py3-none-any.whl", hash = "sha256:fa93db44bc04542553ba6090818b892f603d02aa0d681e6c5c3023baf17e8564"},
