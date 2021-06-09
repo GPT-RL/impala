@@ -48,7 +48,7 @@ RUN apt-get update -q \
 
 WORKDIR "/deps"
 
-COPY pyproject.toml poetry.lock /deps
+COPY pyproject.toml poetry.lock /deps/
 RUN python3.8 -m pip install poetry && poetry install
 
 FROM base AS runtime

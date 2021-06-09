@@ -15,7 +15,7 @@
 """Single-process IMPALA wiring."""
 
 import threading
-from typing import List
+from typing import List, Literal
 
 import jax
 import optax
@@ -26,6 +26,8 @@ from examples.impala import haiku_nets
 from examples.impala import learner as learner_lib
 from examples.impala import util
 from tap import Tap
+
+from gpt.pretrained import ModelSize
 
 
 class Args(Tap):
@@ -38,6 +40,7 @@ class Args(Tap):
     max_env_frames: int = 20000
     num_actors: int = 2
     unroll_length: int = 20
+    gpt: Literal[tuple(x.value for x in ModelSize)] = None
 
 
 def run_actor(actor: actor_lib.Actor, stop_signal: List[bool]):
