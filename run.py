@@ -19,29 +19,25 @@ from typing import List
 
 import jax
 import optax
-from absl import app
-from absl import flags
 from bsuite import bsuite
 from examples.impala import actor as actor_lib
 from examples.impala import agent as agent_lib
 from examples.impala import haiku_nets
 from examples.impala import learner as learner_lib
 from examples.impala import util
+from tap import Tap
 
-# Bsuite flags
-flags.DEFINE_string("bsuite_id", "deep_sea/0", "Bsuite id.")
-flags.DEFINE_string("results_dir", "/tmp/bsuite", "CSV results directory.")
-flags.DEFINE_boolean("overwrite", False, "Whether to overwrite csv results.")
-FLAGS = flags.FLAGS
 
-ACTION_REPEAT = 1
-BATCH_SIZE = 2
-DISCOUNT_FACTOR = 0.99
-MAX_ENV_FRAMES = 20000
-NUM_ACTORS = 2
-UNROLL_LENGTH = 20
-
-FRAMES_PER_ITER = ACTION_REPEAT * BATCH_SIZE * UNROLL_LENGTH
+class Args(Tap):
+    bsuite_id: str = "cartpole/0"
+    results_dir: str = "/tmp/bsuite"  # CSV results directory.
+    overwrite: bool = False  # Whether to overwrite csv results.
+    action_repeat: int = 1
+    batch_size: int = 2
+    discount_factor: float = 0.99
+    max_env_frames: int = 20000
+    num_actors: int = 2
+    unroll_length: int = 20
 
 
 def run_actor(actor: actor_lib.Actor, stop_signal: List[bool]):
@@ -51,66 +47,64 @@ def run_actor(actor: actor_lib.Actor, stop_signal: List[bool]):
         actor.unroll_and_push(frame_count, params)
 
 
-def main(_):
+def run(args: Args):
+    frames_per_iter = args.action_repeat * args.batch_size * args.unroll_length
 
     # Create an environment and grab the spec.
     def build_env():
         return bsuite.load_and_record_to_csv(
-            bsuite_id=FLAGS.bsuite_id,
-            results_dir=FLAGS.results_dir,
-            overwrite=FLAGS.overwrite,
+            bsuite_id=args.bsuite_id,
+            results_dir=args.results_dir,
+            overwrite=args.overwrite,
         )
 
     env_for_spec = build_env()
-
     # Construct the agent. We need a sample environment for its spec.
     num_actions = env_for_spec.action_spec().num_values
     agent = agent_lib.Agent(
         num_actions, env_for_spec.observation_spec(), haiku_nets.CatchNet
     )
-
     # Construct the optimizer.
-    max_updates = MAX_ENV_FRAMES / FRAMES_PER_ITER
+    max_updates = args.max_env_frames / frames_per_iter
     opt = optax.rmsprop(1e-1, decay=0.99, eps=0.1)
-
     # Construct the learner.
     learner = learner_lib.Learner(
         agent,
         jax.random.PRNGKey(428),
         opt,
-        BATCH_SIZE,
-        DISCOUNT_FACTOR,
-        FRAMES_PER_ITER,
+        args.batch_size,
+        args.discount_factor,
+        frames_per_iter,
         max_abs_reward=1.0,
         logger=util.AbslLogger(),  # Provide your own logger here.
     )
-
     # Construct the actors on different threads.
     # stop_signal in a list so the reference is shared.
     actor_threads = []
     stop_signal = [False]
-    for i in range(NUM_ACTORS):
+    for i in range(args.num_actors):
         actor = actor_lib.Actor(
             agent,
             build_env(),
-            UNROLL_LENGTH,
+            args.unroll_length,
             learner,
             rng_seed=i,
             logger=util.AbslLogger(),  # Provide your own logger here.
         )
-        args = (actor, stop_signal)
-        actor_threads.append(threading.Thread(target=run_actor, args=args))
-
+        actor_threads.append(
+            threading.Thread(target=run_actor, args=(actor, stop_signal))
+        )
     # Start the actors and learner.
     for t in actor_threads:
         t.start()
     learner.run(int(max_updates))
-
     # Stop.
     stop_signal[0] = True
     for t in actor_threads:
         t.join()
 
+    return args.bsuite_id
+
 
 if __name__ == "__main__":
-    app.run(main)
+    run(Args().parse_args())

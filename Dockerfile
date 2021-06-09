@@ -9,7 +9,7 @@ ENV LC_ALL C.UTF-8
 # no .pyc files
 ENV PYTHONDONTWRITEBYTECODE 1  
 
-# traceback on segfault
+# traceback on segfau8t
 ENV PYTHONFAULTHANDLER 1
 
 # use ipdb for breakpoints
@@ -24,10 +24,10 @@ RUN apt-get update -q \
  && DEBIAN_FRONTEND="noninteractive" \
     apt-get install -yq \
       # primary interpreter
-      python3.9 \
+      python3.8 \
 
       # required by transformers package
-      python3.9-distutils \
+      python3.8-distutils \
  && apt-get clean
 
 FROM base AS python-deps
@@ -48,14 +48,13 @@ RUN apt-get update -q \
 
 WORKDIR "/deps"
 
-RUN wget 'https://storage.googleapis.com/jax-releases/cuda112/jaxlib-0.1.65+cuda112-cp39-none-manylinux2010_x86_64.whl'
 COPY pyproject.toml poetry.lock /deps
-RUN python3.9 -m pip install poetry && poetry install
+RUN python3.8 -m pip install poetry && poetry install
 
 FROM base AS runtime
 
 WORKDIR "/project"
-COPY --from=python-deps /root/.cache/pypoetry/virtualenvs/bsuite-actor-critic-K3BlsyQa-py3.9/ /project/venv
+COPY --from=python-deps /root/.cache/pypoetry/virtualenvs/impala-gpt-K3BlsyQa-py3.8/ /project/venv
 COPY . .
 
 ENTRYPOINT ["python"]

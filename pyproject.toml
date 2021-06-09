@@ -10,11 +10,12 @@ jaxlib = {url = "https://storage.googleapis.com/jax-releases/cuda112/jaxlib-0.1.
 halo = "^0.0.31"
 requests = "^2.25.1"
 transformers = "^4.6.1"
-dm-acme = {extras = ["envs","jax"], version = "^0.2.1"}
-tensorflow = "^2.5.0"
-dm-reverb = {extras = ["tensorflow"], version = "^0.3.1"}
-Cython = "^0.29.23"
-sonnet = "^0.1.6"
+jax = "^0.2.13"
+optax = "^0.0.6"
+bsuite = "^0.3.5"
+dm-haiku = "^0.0.4"
+rlax = "^0.0.3"
+typed-argument-parser = "^1.6.3"
 
 [tool.poetry.dev-dependencies]
 ipython = "^7.24.1"
