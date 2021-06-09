@@ -21,12 +21,13 @@ import jax
 import optax
 from bsuite import bsuite
 from examples.impala import actor as actor_lib
-from examples.impala import agent as agent_lib
 from examples.impala import haiku_nets
 from examples.impala import learner as learner_lib
 from examples.impala import util
 from tap import Tap
 
+import agent as agent_lib
+import gpt.net
 from gpt.pretrained import ModelSize
 
 
@@ -64,9 +65,15 @@ def run(args: Args):
     env_for_spec = build_env()
     # Construct the agent. We need a sample environment for its spec.
     num_actions = env_for_spec.action_spec().num_values
-    agent = agent_lib.Agent(
-        num_actions, env_for_spec.observation_spec(), haiku_nets.CatchNet
-    )
+
+    def net_factory(num_actions):
+        return (
+            haiku_nets.CatchNet(num_actions)
+            if args.gpt is None
+            else gpt.net.Net(num_actions, ModelSize(args.gpt))
+        )
+
+    agent = agent_lib.Agent(num_actions, env_for_spec.observation_spec(), net_factory)
     # Construct the optimizer.
     max_updates = args.max_env_frames / frames_per_iter
     opt = optax.rmsprop(1e-1, decay=0.99, eps=0.1)
