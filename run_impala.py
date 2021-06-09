@@ -14,111 +14,26 @@
 # limitations under the License.
 
 """Runs IMPALA on bsuite locally."""
-from collections import namedtuple
 from typing import Optional
 
 import acme
 import bsuite
 import haiku as hk
-import jax
 import jax.numpy as jnp
 import numpy as np
-import optax
 from absl import app
 from absl import flags
 from acme import specs
 from acme import wrappers
-from acme.agents import replay
-from acme.agents.jax.impala import acting
-from acme.agents.jax.impala import agent
-from acme.agents.jax.impala import learning
-from acme.agents.jax.impala import types
-from acme.agents.jax.impala.agent import IMPALAConfig
+from acme.agents.jax.impala.agent import IMPALAConfig, IMPALAFromConfig
 from acme.jax import networks
-from acme.jax import variable_utils
 from acme.tf import networks
-from acme.utils import counting
-from acme.utils import loggers
 
 # Bsuite flags
 flags.DEFINE_string('bsuite_id', 'deep_sea/0', 'Bsuite id.')
 flags.DEFINE_string('results_dir', '/tmp/bsuite', 'CSV results directory.')
 flags.DEFINE_boolean('overwrite', False, 'Whether to overwrite csv results.')
 FLAGS = flags.FLAGS
-
-class IMPALALearner(learning.IMPALALearner):
-    pass
-
-class IMPALAFromConfig(agent.IMPALAFromConfig):
-    def __init__(
-            self,
-            environment_spec: specs.EnvironmentSpec,
-            forward_fn: types.PolicyValueFn,
-            unroll_init_fn: types.PolicyValueInitFn,
-            unroll_fn: types.PolicyValueFn,
-            initial_state_init_fn: types.RecurrentStateInitFn,
-            initial_state_fn: types.RecurrentStateFn,
-            config: IMPALAConfig,
-            counter: counting.Counter = None,
-            logger: loggers.Logger = None,
-    ):
-        self._config = config
-
-        # Data is handled by the reverb replay queue.
-        num_actions = environment_spec.actions.num_values
-        self._logger = logger or loggers.TerminalLogger('agent')
-
-        key, key_initial_state = jax.random.split(
-            jax.random.PRNGKey(self._config.seed))
-        params = initial_state_init_fn(key_initial_state)
-        extra_spec = {
-            'core_state': initial_state_fn(params),
-            'logits': np.ones(shape=(num_actions,), dtype=np.float32)
-        }
-        reverb_queue = replay.make_reverb_online_queue(
-            environment_spec=environment_spec,
-            extra_spec=extra_spec,
-            max_queue_size=self._config.max_queue_size,
-            sequence_length=self._config.sequence_length,
-            sequence_period=self._config.sequence_period,
-            batch_size=self._config.batch_size,
-        )
-        self._server = reverb_queue.server
-        self._can_sample = reverb_queue.can_sample
-
-        # Make the learner.
-        optimizer = optax.chain(
-            optax.clip_by_global_norm(self._config.max_gradient_norm),
-            optax.adam(self._config.learning_rate),
-        )
-        key_learner, key_actor = jax.random.split(key)
-        self._learner = IMPALALearner(
-            obs_spec=environment_spec.observations,
-            unroll_init_fn=unroll_init_fn,
-            unroll_fn=unroll_fn,
-            initial_state_init_fn=initial_state_init_fn,
-            initial_state_fn=initial_state_fn,
-            iterator=reverb_queue.data_iterator,
-            random_key=key_learner,
-            counter=counter,
-            logger=logger,
-            optimizer=optimizer,
-            discount=self._config.discount,
-            entropy_cost=self._config.entropy_cost,
-            baseline_cost=self._config.baseline_cost,
-            max_abs_reward=self._config.max_abs_reward,
-        )
-
-        # Make the actor.
-        variable_client = variable_utils.VariableClient(self._learner, key='policy')
-        self._actor = acting.IMPALAActor(
-            forward_fn=jax.jit(forward_fn, backend='cpu'),
-            initial_state_init_fn=initial_state_init_fn,
-            initial_state_fn=initial_state_fn,
-            rng=hk.PRNGSequence(key_actor),
-            adder=reverb_queue.adder,
-            variable_client=variable_client,
-        )
 
 
 class Network(hk.RNNCore):
@@ -146,11 +61,8 @@ class Network(hk.RNNCore):
 
 def main(_):
   # Create an environment and grab the spec.
-  bsuite_id = FLAGS.bsuite_id
-  Flags = namedtuple('Flags', [*FLAGS])
-  flags = Flags(**{attr: getattr(FLAGS, attr) for attr in Flags._fields})
   raw_environment = bsuite.load_and_record_to_csv(
-      bsuite_id=bsuite_id,
+      bsuite_id=(FLAGS.bsuite_id),
       results_dir=FLAGS.results_dir,
       overwrite=FLAGS.overwrite,
   )
